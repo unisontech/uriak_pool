@@ -22,7 +22,7 @@ config_to_spec({PoolName, PoolConfig}) ->
   Args = [{name, {local, PoolName}},
           {worker_module, riak_pool_worker} | PoolConfig],
   {PoolName, {poolboy, start_link, [Args]},
-   permanent, 5000, worker, [poolboy]}.
+   temporary, 5000, worker, [poolboy]}.
 
 %% q()->
 %%     {ok,
