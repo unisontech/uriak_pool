@@ -43,8 +43,7 @@ free_worker({Pool, Worker})->
     poolboy:checkin(Pool, Worker).
 
 restart()->
-    application:stop(riak_pool),
-    application:start(riak_pool).
+    riak_pool_sup:restart().
 
 %%%----------------------------------------------------------------------
 %%% Riak Calls (can you say auto-generated-code?)

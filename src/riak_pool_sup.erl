@@ -2,7 +2,7 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/0, restart/0]).
 -export([init/1]).
 
 start_link() ->
@@ -23,6 +23,21 @@ config_to_spec({PoolName, PoolConfig}) ->
           {worker_module, riak_pool_worker} | PoolConfig],
   {PoolName, {poolboy, start_link, [Args]},
    temporary, 5000, worker, [poolboy]}.
+
+restart() ->
+    {ok, Config} = application:get_env(riak_pool, pools),
+    CurNames = supervisor:which_children(?MODULE),
+    RestartChildSpecs =
+        lists:foldl(
+          fun({WName,_,_,_,_,_} = Spec, Acc) ->
+                  case lists:keyfind(WName, 1, CurNames) of
+                      false -> [Spec | Acc];
+                      _     -> Acc
+                  end
+          end, [], generate_workers(Config)),
+    [supervisor:start_child(?MODULE, Child) || Child <- RestartChildSpecs].
+    
+                                       
 
 %% q()->
 %%     {ok,
@@ -45,3 +60,4 @@ config_to_spec({PoolName, PoolConfig}) ->
 %%                 {port,8087}]]},
 %%         permanent,5000,worker,
 %%         [poolboy]}]}}.
+
