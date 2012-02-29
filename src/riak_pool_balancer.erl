@@ -31,14 +31,12 @@ get_pool()->
 
 init([]) ->
     {ok, Config} = application:get_env(riak_pool, pools),
-    case [Pool || {Pool, _} <- Config] of
-        [] ->
-            {stop, no_pools_found};
-        Pools ->
-            {ok, #state{pools=Pools}}
-    end.
+    Pools = [Pool || {Pool, _} <- Config],
+    {ok, #state{pools = Pools}}.
 
-handle_call(get_pool, _From, State=#state{pools = Pools, current = Current }) ->
+handle_call(get_pool, _From, State = #state{pools = []}) ->
+    {reply, {error, no_pools_found}, State};
+handle_call(get_pool, _From, State = #state{pools = Pools, current = Current }) ->
     Reply = lists:nth(Current, Pools),
     {reply, Reply, State#state{current = case Q = Current rem length(Pools) of 0->1; _->Q end}};
 
