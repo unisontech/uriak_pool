@@ -38,7 +38,7 @@ handle_call(get_pool, _From, State = #state{pools = []}) ->
     {reply, {error, no_pools_found}, State};
 handle_call(get_pool, _From, State = #state{pools = Pools, current = Current }) ->
     Reply = lists:nth(Current, Pools),
-    {reply, Reply, State#state{current = case Q = Current rem length(Pools) of 0->1; _->Q end}};
+    {reply, Reply, State#state{current = case Q = (Current +1) rem (length(Pools)+1) of 0->1; _->Q end}};
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
