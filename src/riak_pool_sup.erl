@@ -16,7 +16,7 @@ init([]) ->
    {Strategy, lists:flatten(Processes)}}.
 
 generate_workers(AggregateConfig) ->
-  [config_to_spec(Conf) || Conf <- AggregateConfig].
+    [config_to_spec(PoolConf) || {_AppName, AppPools} <- AggregateConfig, PoolConf <- AppPools].
 
 config_to_spec({PoolName, PoolConfig}) ->
   Args = [{name, {local, PoolName}},

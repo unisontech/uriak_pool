@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, get_pool/0]).
+-export([start_link/0, get_pool/0, get_pool/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -13,7 +13,10 @@
 
 -define(POOL_TIMEOUT, 1000).
 
--record(state, {pools, current = 1}).
+-record(state, {
+    orig_pools  :: dict(),
+    curr_pools  :: dict()
+}).
 
 %%%===================================================================
 %%% API
@@ -23,7 +26,15 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 get_pool()->
-    gen_server:call(?SERVER, get_pool, ?POOL_TIMEOUT).
+    case application:get_application() of
+        {ok, AppName} ->
+            get_pool(AppName);
+        _ ->
+            {error, no_pools_found}
+    end.
+
+get_pool(AppName)->
+    gen_server:call(?SERVER, {get_pool, AppName}, ?POOL_TIMEOUT).
     
 %%%===================================================================
 %%% gen_server callbacks
@@ -31,14 +42,28 @@ get_pool()->
 
 init([]) ->
     {ok, Config} = application:get_env(riak_pool, pools),
-    Pools = [Pool || {Pool, _} <- Config],
-    {ok, #state{pools = Pools}}.
+    Pools = lists:foldl(
+        fun ({AppName, PoolName}, Acc) ->
+            dict:append(AppName, PoolName, Acc)
+        end,
+        dict:new(),
+        [{AppName, PoolName} || {AppName, AppPools} <- Config, {PoolName, _PoolConfig} <- AppPools]
+    ),
 
-handle_call(get_pool, _From, State = #state{pools = []}) ->
-    {reply, {error, no_pools_found}, State};
-handle_call(get_pool, _From, State = #state{pools = Pools, current = Current }) ->
-    Reply = lists:nth(Current, Pools),
-    {reply, Reply, State#state{current = case Q = (Current +1) rem (length(Pools)+1) of 0->1; _->Q end}};
+    {ok, #state{orig_pools = Pools, curr_pools = Pools}}.
+
+handle_call({get_pool, ForApp}, _From, State = #state{orig_pools = OPools, curr_pools = CPools}) ->
+    case dict:find(ForApp, CPools) of
+        {ok, []} ->
+            [P | Ps] = dict:fetch(ForApp, OPools),
+            NewCPools = dict:store(ForApp, Ps, CPools),
+            {reply, P, State#state{curr_pools = NewCPools}};
+        {ok, [P | Ps]} ->
+            NewCPools = dict:store(ForApp, Ps, CPools),
+            {reply, P, State#state{curr_pools = NewCPools}};
+        error ->
+            {reply, {error, no_pools_found}, State}
+    end;
 
 handle_call(_Request, _From, State) ->
     Reply = ok,

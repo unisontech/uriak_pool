@@ -23,7 +23,7 @@
          search/3, search/5, search/6,
          get_index/4, get_index/5, get_index/6, get_index/7
          % default_timeout/1
-         , get_worker/0, free_worker/1
+         , get_worker/0, get_worker/1, free_worker/1
          ,restart/0
        ]).
 
@@ -36,6 +36,11 @@ call_worker({_Pool, Worker}, Function, Args)->
 -spec get_worker() -> worker().                        
 get_worker()->
     Pool = riak_pool_balancer:get_pool(),
+    {Pool, poolboy:checkout(Pool)}.
+
+-spec get_worker(AppName :: atom()) -> worker().
+get_worker(AppName)->
+    Pool = riak_pool_balancer:get_pool(AppName),
     {Pool, poolboy:checkout(Pool)}.
 
 -spec free_worker(worker())-> ok.                         
