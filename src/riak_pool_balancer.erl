@@ -14,8 +14,9 @@
 -define(POOL_TIMEOUT, 1000).
 
 -record(state, {
-    orig_pools  :: dict(),
-    curr_pools  :: dict()
+    orig_pools      :: dict(),
+    curr_pools      :: dict(),
+    default_app     :: atom()
 }).
 
 %%%===================================================================
@@ -29,8 +30,8 @@ get_pool()->
     case application:get_application() of
         {ok, AppName} ->
             get_pool(AppName);
-        _ ->
-            {error, no_pools_found}
+        undefined ->
+            get_pool(undefined)
     end.
 
 get_pool(AppName)->
@@ -42,6 +43,13 @@ get_pool(AppName)->
 
 init([]) ->
     {ok, Config} = application:get_env(riak_pool, pools),
+    DefaultApp = case application:get_env(riak_pool, default_app) of
+        {ok, _DefaultApp} ->
+            _DefaultApp;
+        undefined ->
+            undefined
+    end,
+    
     Pools = lists:foldl(
         fun ({AppName, PoolName}, Acc) ->
             dict:append(AppName, PoolName, Acc)
@@ -50,7 +58,13 @@ init([]) ->
         [{AppName, PoolName} || {AppName, AppPools} <- Config, {PoolName, _PoolConfig} <- AppPools]
     ),
 
-    {ok, #state{orig_pools = Pools, curr_pools = Pools}}.
+    {ok, #state{orig_pools = Pools, curr_pools = Pools, default_app = DefaultApp}}.
+
+handle_call({get_pool, undefined}, _From, State = #state{default_app = undefined}) ->
+    {reply, {error, no_pools_found}, State};
+
+handle_call({get_pool, undefined}, From, State = #state{default_app = DefaultApp}) ->
+    handle_call({get_pool, DefaultApp}, From, State);
 
 handle_call({get_pool, ForApp}, _From, State = #state{orig_pools = OPools, curr_pools = CPools}) ->
     case dict:find(ForApp, CPools) of
