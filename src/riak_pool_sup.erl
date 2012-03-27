@@ -9,14 +9,14 @@ start_link() ->
   supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-  {ok, Config} = application:get_env(riak_pool, pools),
+  {ok, Config} = application:get_env(riak_pool, clusters),
   Processes = generate_workers(Config),
   Strategy = {one_for_one, 10, 10},
   {ok,
    {Strategy, lists:flatten(Processes)}}.
 
 generate_workers(AggregateConfig) ->
-    [config_to_spec(PoolConf) || {_AppName, AppPools} <- AggregateConfig, PoolConf <- AppPools].
+    [config_to_spec(PoolConf) || {_ClusterName, ClusterPools} <- AggregateConfig, PoolConf <- ClusterPools].
 
 config_to_spec({PoolName, PoolConfig}) ->
   Args = [{name, {local, PoolName}},
@@ -25,7 +25,7 @@ config_to_spec({PoolName, PoolConfig}) ->
    temporary, 5000, worker, [poolboy]}.
 
 restart() ->
-    {ok, Config} = application:get_env(riak_pool, pools),
+    {ok, Config} = application:get_env(riak_pool, clusters),
     CurNames = supervisor:which_children(?MODULE),
     RestartChildSpecs =
         lists:foldl(

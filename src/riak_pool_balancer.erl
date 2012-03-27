@@ -14,9 +14,9 @@
 -define(POOL_TIMEOUT, 1000).
 
 -record(state, {
-    orig_pools      :: dict(),
-    curr_pools      :: dict(),
-    default_app     :: atom()
+    orig_clusters      :: dict(),
+    curr_clusters      :: dict(),
+    default_cluster     :: atom()
 }).
 
 %%%===================================================================
@@ -27,9 +27,9 @@ start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 get_pool()->
-    case application:get_application() of
-        {ok, AppName} ->
-            get_pool(AppName);
+    case application:get_env(riak_cluster) of
+        {ok, ClusterName} ->
+            get_pool(ClusterName);
         undefined ->
             get_pool(undefined)
     end.
@@ -42,10 +42,10 @@ get_pool(AppName)->
 %%%===================================================================
 
 init([]) ->
-    {ok, Config} = application:get_env(riak_pool, pools),
-    DefaultApp = case application:get_env(riak_pool, default_app) of
-        {ok, _DefaultApp} ->
-            _DefaultApp;
+    {ok, Config} = application:get_env(riak_pool, clusters),
+    DefaultCluster = case application:get_env(riak_pool, default_cluster) of
+        {ok, _DefaultCluster} ->
+            _DefaultCluster;
         undefined ->
             undefined
     end,
@@ -55,26 +55,26 @@ init([]) ->
             dict:append(AppName, PoolName, Acc)
         end,
         dict:new(),
-        [{AppName, PoolName} || {AppName, AppPools} <- Config, {PoolName, _PoolConfig} <- AppPools]
+        [{ClusterName, PoolName} || {ClusterName, ClusterPools} <- Config, {PoolName, _PoolConf} <- ClusterPools]
     ),
 
-    {ok, #state{orig_pools = Pools, curr_pools = Pools, default_app = DefaultApp}}.
+    {ok, #state{orig_clusters = Pools, curr_clusters = Pools, default_cluster = DefaultCluster}}.
 
-handle_call({get_pool, undefined}, _From, State = #state{default_app = undefined}) ->
+handle_call({get_pool, undefined}, _From, State = #state{default_cluster = undefined}) ->
     {reply, {error, no_pools_found}, State};
 
-handle_call({get_pool, undefined}, From, State = #state{default_app = DefaultApp}) ->
+handle_call({get_pool, undefined}, From, State = #state{default_cluster = DefaultApp}) ->
     handle_call({get_pool, DefaultApp}, From, State);
 
-handle_call({get_pool, ForApp}, _From, State = #state{orig_pools = OPools, curr_pools = CPools}) ->
+handle_call({get_pool, ForApp}, _From, State = #state{orig_clusters = OPools, curr_clusters = CPools}) ->
     case dict:find(ForApp, CPools) of
         {ok, []} ->
             [P | Ps] = dict:fetch(ForApp, OPools),
             NewCPools = dict:store(ForApp, Ps, CPools),
-            {reply, P, State#state{curr_pools = NewCPools}};
+            {reply, P, State#state{curr_clusters = NewCPools}};
         {ok, [P | Ps]} ->
             NewCPools = dict:store(ForApp, Ps, CPools),
-            {reply, P, State#state{curr_pools = NewCPools}};
+            {reply, P, State#state{curr_clusters = NewCPools}};
         error ->
             {reply, {error, no_pools_found}, State}
     end;
