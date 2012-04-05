@@ -1,6 +1,7 @@
 -module(riak_pool).
 
 -export([% set_options/2, set_options/3,
+         with_worker/1, with_worker/2,
          is_connected/1, is_connected/2,
          ping/1, ping/2,
          % get_client_id/1, get_client_id/2,
@@ -26,6 +27,44 @@
          , get_worker/0, get_worker/1, free_worker/1
          ,restart/0
        ]).
+
+with_worker(Fun) when is_function(Fun, 1) ->
+    Worker = riak_pool:get_worker(),
+        try  
+        Fun(Worker)
+    after
+        riak_pool:free_worker(Worker)
+    end.
+
+%% @TODO try test this optimization.
+%% with_worker(Fun) when is_function(Fun, 1) ->
+%%     {IsFromDict, Worker} =
+%%         case get($riak_pool_worker) of
+%%             undefined ->
+%%                 Worker = riak_pool:get_worker(),
+%%                 put($riak_pool_worker, Worker),
+%%                 {false, Worker};
+%%             Worker ->
+%%                 {true, Worker}
+%%         end,
+%%     try
+%%         Fun(Worker)
+%%     after
+%%         case IsFromDict of
+%%             true  -> pass;
+%%             false ->
+%%                 erase($riak_pool_worker),
+%%                 catch(riak_pool:free_worker(Worker))
+%%         end
+%%     end.
+
+with_worker(Fun, Args) ->
+    Worker = riak_pool:get_worker(),
+    try  
+        apply(Fun, [Worker | Args])
+    after
+        riak_pool:free_worker(Worker)
+    end.
 
 -type worker() :: {atom(), pid()}.
 
