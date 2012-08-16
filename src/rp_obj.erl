@@ -6,8 +6,7 @@
          get_value/1,
          get_values/1]).
 
--include_lib("riakc/include/riakc_obj.hrl").
--define(CTYPE_BINARY, "application/octet-stream").
+-include("rp_obj.hrl").
 
 new(B, K, V) when is_binary(V) -> riakc_obj:new(B,K, V, ?CTYPE_BINARY);
 new(B, K, V) -> riakc_obj:new(B, K, V).
