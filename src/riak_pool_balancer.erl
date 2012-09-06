@@ -55,7 +55,7 @@ init([]) ->
             dict:append(AppName, PoolName, Acc)
         end,
         dict:new(),
-        [{ClusterName, PoolName} || {ClusterName, ClusterPools} <- Config, {PoolName, _PoolConf} <- ClusterPools]
+        [{ClusterName, PoolName} || {ClusterName, ClusterPools} <- Config, {PoolName, _SizeArgs, _PoolConf} <- ClusterPools]
     ),
 
     {ok, #state{orig_clusters = Pools, curr_clusters = Pools, default_cluster = DefaultCluster}}.

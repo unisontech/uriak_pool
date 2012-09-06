@@ -18,11 +18,11 @@ init([]) ->
 generate_workers(AggregateConfig) ->
     [config_to_spec(PoolConf) || {_ClusterName, ClusterPools} <- AggregateConfig, PoolConf <- ClusterPools].
 
-config_to_spec({PoolName, PoolConfig}) ->
-  Args = [{name, {local, PoolName}},
-          {worker_module, riak_pool_worker} | PoolConfig],
-  {PoolName, {poolboy, start_link, [Args]},
-   temporary, 5000, worker, [poolboy]}.
+config_to_spec({PoolName, SizeArgs, WorkerArgs}) ->
+    PoolArgs = [
+        {name, {local, PoolName}}, {worker_module, riak_pool_worker} | SizeArgs
+    ],
+    poolboy:child_spec(PoolName, PoolArgs, WorkerArgs).
 
 restart() ->
     {ok, Config} = application:get_env(riak_pool, clusters),
@@ -36,28 +36,3 @@ restart() ->
                   end
           end, [], generate_workers(Config)),
     [supervisor:start_child(?MODULE, Child) || Child <- RestartChildSpecs].
-    
-                                       
-
-%% q()->
-%%     {ok,
-%%      {{one_for_one,10,10},
-%%       [{car,{poolboy,start_link,
-%%              [[{name,{local,car}},
-%%                {worker_module,riak_pool_worker},
-%%                {pool_size,10},
-%%                {max_overflow,20},
-%%                {host,"127.0.0.1"},
-%%                {port,8087}]]},
-%%         permanent,5000,worker,
-%%         [poolboy]},
-%%        {prod,{poolboy,start_link,
-%%               [[{name,{local,prod}},
-%%                 {worker_module,riak_pool_worker},
-%%                 {pool_size,5},
-%%                 {max_overflow,10},
-%%                 {host,"127.0.0.1"},
-%%                 {port,8087}]]},
-%%         permanent,5000,worker,
-%%         [poolboy]}]}}.
-
