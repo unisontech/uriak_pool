@@ -3,7 +3,7 @@
   {description, "riak pool"},
   {vsn, "0.4"},
   {modules, []},
-  {registered, [riak_pool_sup, riak_pool_balancer]},
+  {registered, []},
   {applications, [
                   kernel,
                   stdlib

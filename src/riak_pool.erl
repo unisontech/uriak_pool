@@ -1,7 +1,7 @@
 -module(riak_pool).
 
 -export([% set_options/2, set_options/3,
-         with_worker/1, with_worker/2,
+         with_worker/1, with_worker/2, with_worker/3,
          is_connected/1, is_connected/2,
          ping/1, ping/2,
          % get_client_id/1, get_client_id/2,
@@ -25,16 +25,7 @@
          get_index/4, get_index/5, get_index/6, get_index/7
          % default_timeout/1
          , get_worker/0, get_worker/1, free_worker/1
-         ,restart/0
        ]).
-
-with_worker(Fun) when is_function(Fun, 1) ->
-    Worker = riak_pool:get_worker(),
-        try  
-        Fun(Worker)
-    after
-        riak_pool:free_worker(Worker)
-    end.
 
 %% @TODO try test this optimization.
 %% with_worker(Fun) when is_function(Fun, 1) ->
@@ -58,13 +49,28 @@ with_worker(Fun) when is_function(Fun, 1) ->
 %%         end
 %%     end.
 
-with_worker(Fun, Args) ->
-    Worker = riak_pool:get_worker(),
-    try  
-        apply(Fun, [Worker | Args])
-    after
-        riak_pool:free_worker(Worker)
+with_worker(Fun)        -> do_with_worker(Fun).
+with_worker(Fun, Args)  -> do_with_worker({Fun, Args}).
+with_worker(M, F, Args) -> do_with_worker({M, F, Args}).
+
+do_with_worker(Fun) ->
+    case get_worker() of
+        {error, _W} = Error -> Error;
+        Worker ->
+            try 
+                apply_worker_operation(Worker, Fun)
+            after
+                riak_pool:free_worker(Worker)
+            end
     end.
+
+apply_worker_operation(Worker, Fun) when is_function(Fun, 1) ->
+    Fun(Worker);
+apply_worker_operation(Worker, {M, F, A}) ->
+    apply(M, F, [Worker | A]);
+apply_worker_operation(Worker, {F, A}) ->
+    apply(F, [Worker | A]).
+
 
 -type worker() :: {atom(), pid()}.
 
@@ -74,20 +80,24 @@ call_worker({_Pool, Worker}, Function, Args)->
 
 -spec get_worker() -> worker().                        
 get_worker()->
-    Pool = riak_pool_balancer:get_pool(),
-    {Pool, poolboy:checkout(Pool)}.
+    do_get_worker(riak_pool_balancer:get_pool()).
 
 -spec get_worker(AppName :: atom()) -> worker().
 get_worker(AppName)->
-    Pool = riak_pool_balancer:get_pool(AppName),
-    {Pool, poolboy:checkout(Pool)}.
+    do_get_worker(riak_pool_balancer:get_pool(AppName)).
+
+do_get_worker({error, _W} = Error) -> Error;
+do_get_worker(Pool) ->
+    case poolboy:checkout(Pool) of
+        Pid when is_pid(Pid) ->
+            {Pool, Pid};
+        Error ->
+            {error, {pool_checkout, Error}}
+    end.
 
 -spec free_worker(worker())-> ok.                         
 free_worker({Pool, Worker})->
     poolboy:checkin(Pool, Worker).
-
-restart()->
-    riak_pool_sup:restart().
 
 %%%----------------------------------------------------------------------
 %%% Riak Calls (can you say auto-generated-code?)
