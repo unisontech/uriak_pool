@@ -57,7 +57,7 @@ do_with_worker(Fun) ->
     case get_worker() of
         {error, _W} = Error -> Error;
         Worker ->
-            try 
+            try
                 apply_worker_operation(Worker, Fun)
             after
                 riak_pool:free_worker(Worker)
@@ -74,11 +74,21 @@ apply_worker_operation(Worker, {F, A}) ->
 
 -type worker() :: {atom(), pid()}.
 
--spec call_worker(worker(), fun(), [term()]) -> term().
-call_worker({_Pool, Worker}, Function, Args)->
-    apply(riakc_pb_socket , Function, [Worker|Args]).
+-spec call_worker(atom() | worker(), fun(), [term()]) -> term().
+call_worker({_Pool, WorkerPid}, Function, Args)->
+    apply(riakc_pb_socket , Function, [WorkerPid|Args]);
+call_worker(Pool, Function, Args) when is_atom(Pool) ->
+    case get_worker(Pool) of
+        {error, _W} = Error -> Error;
+        Worker ->
+            try
+                call_worker(Worker, Function, Args)
+            after
+                riak_pool:free_worker(Worker)
+            end
+    end.
 
--spec get_worker() -> worker().                        
+-spec get_worker() -> worker().
 get_worker()->
     do_get_worker(riak_pool_balancer:get_pool()).
 
@@ -95,7 +105,7 @@ do_get_worker(Pool) ->
             {error, {pool_checkout, Error}}
     end.
 
--spec free_worker(worker())-> ok.                         
+-spec free_worker(worker())-> ok.
 free_worker({Pool, Worker})->
     poolboy:checkin(Pool, Worker).
 
@@ -147,12 +157,12 @@ get(Worker, A, B) ->
                  {ok, riakc_obj:riakc_obj()} | {error, term() | unchanged}.
 get(Worker, A, B, C) ->
   call_worker(Worker, get, [A, B, C]).
--spec get(worker(), 
-          riakc_pb_socket:bucket() | string(), 
+-spec get(worker(),
+          riakc_pb_socket:bucket() | string(),
           riakc_pb_socket:key() | string(),
-          riakc_pb_socket:riak_pbc_options(), 
+          riakc_pb_socket:riak_pbc_options(),
           timeout()) ->
-                 {ok, riakc_obj:riakc_obj()} | 
+                 {ok, riakc_obj:riakc_obj()} |
                  {error, term() | unchanged}.
 get(Worker, A, B, C, D) ->
   call_worker(Worker, get, [A, B, C, D]).
