@@ -1,0 +1,14 @@
+# $Id$
+
+# fake makefile for ejabberd autoconf build
+
+all:
+	rebar get-deps
+	rebar compile
+	cp -f ebin/*.beam ../ && cp -f deps/**/ebin/*.beam ../
+
+clean:
+	rebar clean
+
+distclean: clean
+	rm -f Makefile
