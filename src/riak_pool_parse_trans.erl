@@ -70,6 +70,19 @@ tmap(L, IT) when is_list(L) ->
     [tmap(E, IT) || E<- L];
 tmap(Other, _IT) -> Other.
 
+maybe_remote_type(L, IT) when is_list(L) ->
+    [maybe_remote_type(E, IT) || E <-L];
+maybe_remote_type({atom, _, Atom}, _IT)->
+    {atom, 0, Atom};
+maybe_remote_type({ann_type, _,
+                   [{var, _, _varname},
+                    {type, _, _type, _typeParams} = T]},
+                  InternalTypes)->
+    maybe_remote_type(T, InternalTypes);
+maybe_remote_type({remote_type, _, [Mod, TName, TypeParams]},
+                  InternalTypes)->
+    {remote_type, 0,
+     [Mod, TName, maybe_remote_type(TypeParams, InternalTypes)]};
 maybe_remote_type({type, _, Type, TypeParams},
                   InternalTypes)->
     case lists:member(Type, InternalTypes) of
@@ -79,12 +92,13 @@ maybe_remote_type({type, _, Type, TypeParams},
               {atom,0,Type},
               TypeParams]};
         false ->
-            {type, 0, Type, TypeParams}
+            {type, 0, Type,
+             maybe_remote_type(TypeParams, InternalTypes)}
     end.
 
 fix_pool_sp(Sp, IT)->
     fix_sp(Sp, IT, 0,
-           fun([{type, _, pid, []} | OtherArgs])->
+           fun([_pidType | OtherArgs])->
                    [{type,0,worker,[]} | tmap(OtherArgs, IT)]
            end).
 %% -spec delete_vclock(worker(),
@@ -97,7 +111,7 @@ fix_pool_sp(Sp, IT)->
 
 fix_pool_auto_sp(Sp, IT)->
     fix_sp(Sp, IT, 1,
-           fun([{type, _, pid, []} | OtherArgs])->
+           fun([_pidType | OtherArgs])->
                    tmap(OtherArgs, IT)
            end).
 
@@ -106,6 +120,7 @@ fix_sp({attribute,_,spec,
               [{type,_,'fun',
                 [{type,_,product, ArgTypes},
                  ResType]}]}}, InternalTypes, DArity, ArgUpd)->
+%    io:format("##########~p~n", [A]),
     {attribute,0,spec,
      {{Fun, Arity-DArity},
       [{type,0,'fun',
