@@ -1,0 +1,9 @@
+*~
+*.dump
+*.beam
+Makefile
+deps/*
+rel/*
+ebin/*
+.eunit/*
+TAGS
