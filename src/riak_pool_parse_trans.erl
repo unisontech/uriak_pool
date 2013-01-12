@@ -1,8 +1,6 @@
 -module(riak_pool_parse_trans).
 -export([parse_transform/2]).
 
--compile(export_all).
-
 parse_transform(Forms, _Options) ->
     Name = parse_trans:get_module(Forms),
     {FunF, SpecF} =
@@ -101,13 +99,6 @@ fix_pool_sp(Sp, IT)->
            fun([_pidType | OtherArgs])->
                    [{type,0,worker,[]} | tmap(OtherArgs, IT)]
            end).
-%% -spec delete_vclock(worker(),
-%%                     riakc_pb_socket:bucket() | string(),
-%%                     riakc_pb_socket:key() | string(),
-%%                     vclock:vclock(),
-%%                     riakc_pb_socket:riak_pbc_options(),
-%%                     timeout()) ->
-%%                        ok | {error, term()}.
 
 fix_pool_auto_sp(Sp, IT)->
     fix_sp(Sp, IT, 1,
@@ -120,7 +111,6 @@ fix_sp({attribute,_,spec,
               [{type,_,'fun',
                 [{type,_,product, ArgTypes},
                  ResType]}]}}, InternalTypes, DArity, ArgUpd)->
-%    io:format("##########~p~n", [A]),
     {attribute,0,spec,
      {{Fun, Arity-DArity},
       [{type,0,'fun',
@@ -140,8 +130,6 @@ pool_fn(F,A)->
        [{call, 0,
          {remote,0,{atom,0,riakc_pb_socket},{atom,0,F}},
          [{var, 0, 'Worker'} | Vars]}]}]}.
-%% asdf({_Pool,Worker}, A, B) ->
-%%     riakc_pb_socket:asdf(Worker, A, B).
 
 pool_auto_fn(F,A)->
     Vars = varlist(A-1),
@@ -154,8 +142,6 @@ pool_auto_fn(F,A)->
          [{atom, 0, riak_pool},
           {atom, 0, F},
           to_list(Vars)]}]}]}.
-%% asdf(A, B, C) ->
-%%     riak_pool:with_worker(riak_pool, asdf, [A,B,C]).
 
 to_list([])-> {nil,0};
 to_list([H|T])->
@@ -165,36 +151,3 @@ varlist(N)->
     [{var, 0, list_to_atom([I])}
      || I <- lists:seq($A, $A+N-1)].
 %%------------------------------------------------------------
-
-%% pp(F)->
-%%     io:format("~s~n", [erl_pp:form(F)]).
-
-%% test()->
-%%     pp(pool_fn(pool, 5)),
-%%     pp(pool_auto_fn(pool_auto, 5)).
-
-%% sp()->
-%%     {attribute,339,spec,
-%%      {{delete_vclock,6},
-%%       [{type,339,'fun',
-%%         [{type,339,product,
-%%           [{type,339,pid,[]},
-%%            {type,339,union,
-%%             [{type,339,bucket,[]},{type,339,string,[]}]},
-%%            {type,339,union,
-%%             [{type,339,key,[]},{type,339,string,[]}]},
-%%            {remote_type,339,
-%%             [{atom,339,vclock},{atom,339,vclock},[]]},
-%%            {type,340,riak_pbc_options,[]},
-%%            {type,340,timeout,[]}]},
-%%          {type,340,union,
-%%           [{atom,340,ok},
-%%            {type,340,tuple,
-%%             [{atom,340,error},{type,340,term,[]}]}]}]}]}}.
-%% -spec delete_vclock(pid(),
-%%                     bucket() | string(),
-%%                     key() | string(),
-%%                     vclock:vclock(),
-%%                     riak_pbc_options(),
-%%                     timeout()) ->
-%%                        ok | {error, term()}.
