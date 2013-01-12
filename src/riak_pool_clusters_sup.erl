@@ -23,8 +23,8 @@
 start_link(ClustersConf) ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, [ClustersConf]).
 
-start_cluster(ClusterName, ClusterOpts, ClusterOpts) ->
-    ChildSpec = child_spec_for_cluster({ClusterName, ClusterOpts, ClusterOpts}),
+start_cluster(ClusterName, ClusterOpts, Pools) ->
+    ChildSpec = child_spec_for_cluster({ClusterName, ClusterOpts, Pools}),
     supervisor:start_child(?SERVER, ChildSpec).
 
 stop_cluster(ClusterName) ->
