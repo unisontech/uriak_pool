@@ -1,7 +1,7 @@
 Main features
 =============
 
- * handling of riak nodes starts and shutdowns
+ * Graceful handling of riak nodes starts and shutdowns
  * simultaneous work with different riak clusters
  * **parse_transform** generation for interfaces from the client code
  * simple configuring using erlang configuration files
