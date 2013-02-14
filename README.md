@@ -19,6 +19,11 @@ You can build this software with **rebar** tool:
 rebar get-deps && rebar compile
 ```
 
+Usage as rebar dependency:
+
+```erlang
+{riak_pool, ".*", {git, "git@github.com:unisontech/uriak_pool.git", "master"}}
+```
 
 **Important note:** by default, all dependencies are fetched
 from github.com/unisontech repositories.
