@@ -1,3 +1,5 @@
+Riak database connection pool.
+
 Main features
 =============
 
